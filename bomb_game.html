@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bomb Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: black; /* pitch black */
+            padding: 20px;
+        }
+        h1 {
+            color: white; /* white */
+        }
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        label {
+            margin-right: 10px;
+            font-size: 18px;
+            color: white;
+        }
+        input {
+            width: 60px;
+            padding: 5px;
+            font-size: 16px;
+            margin-left: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: cyan; /* cyan */
+            color: black;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s; /* Smooth transition */
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #004d40; /* Darker teal on hover */
+           color: white;
+        }
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Add shadow to the table */
+        }
+        td {
+            width: 70px; /* Fixed width for grid cells */
+            height: 70px; /* Fixed height for grid cells */
+            border: 1px solid #00796b; /* Dark teal border */
+            cursor: pointer;
+            font-size: 24px;
+            text-align: center;
+            vertical-align: middle;
+            background-color: #ffffff; /* White background for cells */
+            transition: background-color 0.3s; /* Smooth transition */
+            overflow: hidden; /* Prevent content overflow */
+            box-sizing: border-box; /* Ensure padding and border are included in the total width and height */
+        }
+        td:hover {
+            background-color: #b2dfdb; /* Light teal on hover */
+        }
+        #info {
+            margin-top: 20px;
+            font-size: 20px;
+            color: #00796b; /* Dark teal */
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bomb Game</h1>
+    <div id="controls">
+        <div class="control-group">
+            <label for="cash">Cash:</label>
+            <input type="number" id="cash" value="1">
+        </div>
+        <div class="control-group">
+            <label for="rows">Rows:</label>
+            <input type="number" id="rows" value="5" min="1">
+        </div>
+        <div class="control-group">
+            <label for="cols">Columns:</label>
+            <input type="number" id="cols" value="5" min="1">
+        </div>
+        <div class="control-group">
+            <label for="bombs">Bombs:</label>
+            <input type="number" id="bombs" value="1" min="1">
+        </div>
+        <div class="control-group">
+            <button onclick="startGame()">Start Game</button>
+            <button onclick="quitGame()" class="hidden" id="quitButton">Quit Game</button>
+        </div>
+    </div>
+    <div id="info"></div>
+    <table id="gameBoard"></table>
+    <script>
+        let m, n, bombCount, cash;
+        let revealedCount = 0;
+        let gameOver = false;
+        let board;
+
+        function startGame() {
+            m = parseInt(document.getElementById('cols').value);
+            n = parseInt(document.getElementById('rows').value);
+            bombCount = parseInt(document.getElementById('bombs').value);
+            cash = parseInt(document.getElementById('cash').value);
+
+            // Check if cash and bomb count are at least 1
+            if (cash < 1 || bombCount < 1) {
+                alert("Cash and Bombs must be at least 1 to start the game!");
+                return;
+            }
+            if (bombCount < (m*n)/9) {
+                alert("Bomb ratio 1 : 9 boxes, so increase the bombs");
+                return;
+            }
+            
+            if (bombCount >= m*n) {
+                alert("Bomb should be lesser than total box");
+                return;
+            }
+
+            revealedCount = bombCount;
+            gameOver = false;
+            board = Array.from({ length: n }, () => Array(m).fill(0));
+            placeBombs();
+            renderBoard();
+            updateInfo();
+            document.getElementById('quitButton').classList.remove('hidden'); // Show quit button
+        }
+
+        function placeBombs() {
+            let count = 0;
+            while (count < bombCount) {
+                const randIndex = Math.floor(Math.random() * (m * n));
+                const row = Math.floor(randIndex / m);
+                const col = randIndex % m;
+                if (board[row][col] !== 2) {
+                    board[row][col] = 2; // Place a bomb
+                    count++;
+                }
+            }
+        }
+
+        function renderBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            for (let i = 0; i < n; i++) {
+                const row = document.createElement('tr');
+                for (let j = 0; j < m; j++) {
+                    const cell = document.createElement('td');
+                    if (board[i][j] === 1) {
+                        cell.classList.add('revealed');
+                        cell.innerHTML = '🟢'; // Revealed cell
+                    } else if (gameOver && board[i][j] === 2) {
+                        cell.classList.add('bomb');
+                        cell.innerHTML = '💣'; // Bomb cell
+                    } else {
+                        cell.innerHTML = ''; // Empty cell
+                    }
+                    cell.onclick = () => handleCellClick(i, j);
+                    row.appendChild(cell);
+                }
+                gameBoard.appendChild(row);
+            }
+            adjustTableSize();
+        }
+
+        function adjustTableSize() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.style.width = `${m * 70}px`; // Adjust width based on columns
+            gameBoard.style.height = `${n * 70}px`; // Adjust height based on rows
+        }
+
+        function handleCellClick(i, j) {
+            if (gameOver) return;
+
+            if (board[i][j] === 2) { // Bomb clicked
+                gameOver = true;
+                revealAll();
+                updateInfo();
+                alert('Game Over! Cash = 0');
+            } else if (board[i][j] === 0) { // Cell not revealed yet
+                board[i][j] = 1; // Mark as revealed
+                revealedCount++;
+                cash += (revealedCount * bombCount * (m + n)); // Update cash
+                if (revealedCount == m*n) {
+                   quitGame();
+                   return;
+                 } 
+                renderBoard();
+                updateInfo();
+            }
+        }
+
+        function revealAll() {
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < m; j++) {
+                    if (board[i][j] === 2) {
+                        board[i][j] = 2; // Bomb
+                    } else if (board[i][j] === 0) {
+                        board[i][j] = 1; // Revealed
+                    }
+                }
+            }
+            renderBoard();
+        }
+
+        function updateInfo() {
+            const infoDiv = document.getElementById('info');
+            infoDiv.innerHTML = `Cash = ${cash} <br>`;
+        }
+
+        function quitGame() {
+            gameOver = true;
+            revealAll();
+            updateInfo();
+            alert(`Game Quit! Final Cash = ${cash}`);
+            document.getElementById('quitButton').classList.add('hidden'); // Hide quit button
+        }
+    </script>
+</body>
+</html>
